@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Patient #{{ patient.token }} - ClearVision Queue{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Edit Patient Details</h1>
+            <p class="mt-2 text-sm text-slate-600">Modify information or update queue status for {{ patient.name }}.</p>
+        </div>
+        <div class="flex-shrink-0 text-center">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3 shadow-sm">
+                <span class="block text-xs font-semibold text-indigo-500 uppercase tracking-wider">Patient Token</span>
+                <span class="text-3xl font-extrabold text-indigo-700">#{{ patient.token }}</span>
+            </div>
+            <div class="mt-2 text-xs text-slate-500">
+                <span class="font-semibold text-slate-700">{{ patient.room.name }}</span>
+                {% if patient.referred_from %}
+                    &nbsp;←&nbsp;
+                    <span class="text-indigo-600 font-semibold">{{ patient.referred_from.room.name }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Referred From Banner (if patient was transferred) -->
+    {% if patient.referred_from %}
+        <div class="flex items-start space-x-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 shadow-sm">
+            <i class="fa-solid fa-arrow-right-arrow-left text-amber-500 mt-0.5 flex-shrink-0"></i>
+            <div>
+                <p class="text-sm font-bold text-amber-800">Patient Transferred from {{ patient.referred_from.room.name }}</p>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    Previously registered as Token <strong>#{{ patient.referred_from.token }}</strong>
+                    on <strong>{{ patient.referred_from.created_at|date:"M d, Y" }}</strong> at
+                    <strong>{{ patient.referred_from.created_at|date:"P" }}</strong>.
+                    {% if patient.referred_from.note %}
+                        Doctor note from previous room: <em>"{{ patient.referred_from.note }}"</em>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Edit Form Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-50 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+            <h2 class="text-base font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-pen-to-square text-indigo-600 mr-2.5"></i>Patient Information
+            </h2>
+        </div>
+        <div class="p-6 sm:p-8">
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- PID -->
+                    <div>
+                        <label for="pid" class="block text-sm font-semibold text-slate-700">Patient ID (PID) <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-id-card"></i>
+                            </div>
+                            <input type="text" name="pid" id="pid" value="{{ patient.pid }}" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-semibold text-slate-700">Full Name <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user-tag"></i>
+                            </div>
+                            <input type="text" name="name" id="name" value="{{ patient.name }}" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Condition -->
+                    <div>
+                        <label for="condition" class="block text-sm font-semibold text-slate-700">Patient Condition <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                            <select name="condition" id="condition" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                                {% for cond in conditions %}
+                                    <option value="{{ cond.id }}" {% if cond.id == patient.condition.id %}selected{% endif %}>
+                                        {{ cond.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Room -->
+                    <div>
+                        <label for="room" class="block text-sm font-semibold text-slate-700">Assigned Clinic Room <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-door-open"></i>
+                            </div>
+                            <select name="room" id="room" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                                {% for rm in rooms %}
+                                    <option value="{{ rm.id }}" {% if rm.id == patient.room.id %}selected{% endif %}>
+                                        {{ rm.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label for="status" class="block text-sm font-semibold text-slate-700">Queue Status <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <select name="status" id="status" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                                {% for val, label in statuses %}
+                                    <option value="{{ val }}" {% if val == patient.status %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label for="note" class="block text-sm font-semibold text-slate-700">Doctor Notes / Symptoms (Optional)</label>
+                    <div class="mt-2">
+                        <textarea name="note" id="note" rows="4"
+                            class="block w-full px-4 py-3 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                            placeholder="Add brief symptoms, diagnosis, or specific requirements...">{{ patient.note|default_if_none:"" }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <a href="{% url 'delete_patient' patient.pk %}" 
+                        onclick="return confirm('Are you sure you want to delete this patient record? This cannot be undone.')"
+                        class="px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                        <i class="fa-solid fa-trash mr-1.5"></i>Delete Patient
+                    </a>
+                    
+                    <div class="flex items-center space-x-3">
+                        <a href="{% url 'dashboard' %}" 
+                            class="px-5 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                            Cancel
+                        </a>
+                        <button type="submit" 
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 hover:shadow-lg transition-all duration-150">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i>Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transfer Patient Card (only for WAITING or IN_PROGRESS patients) -->
+    {% if patient.status in 'WAITING IN_PROGRESS' %}
+        {% if user.is_superuser or user.profile.can_serve_patient %}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 bg-amber-50/60">
+                    <h2 class="text-base font-bold text-amber-900 flex items-center">
+                        <i class="fa-solid fa-arrow-right-arrow-left text-amber-600 mr-2.5"></i>Transfer Patient to Another Room
+                    </h2>
+                    <p class="text-xs text-amber-700 mt-1">
+                        This will mark the current record as <strong>Transferred</strong> and create a new entry in the selected room with the next available token number. Previous notes will be carried over.
+                    </p>
+                </div>
+                <div class="p-6">
+                    <form method="POST" action="{% url 'transfer_patient' patient.pk %}" 
+                          onsubmit="return confirm('Transfer {{ patient.name }} to the selected room? Their current queue position in {{ patient.room.name }} will be closed.')">
+                        {% csrf_token %}
+                        <div class="flex items-end gap-4">
+                            <div class="flex-1">
+                                <label for="transfer-room" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Select Target Room <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-door-open"></i>
+                                    </div>
+                                    <select name="room" id="transfer-room" required
+                                        class="pl-10 block w-full px-3 py-2.5 border border-amber-300 bg-amber-50 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm transition-all">
+                                        <option value="">-- Select a room --</option>
+                                        {% for rm in rooms %}
+                                            {% if rm.id != patient.room.id %}
+                                                <option value="{{ rm.id }}">{{ rm.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit"
+                                class="flex-shrink-0 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-100 transition-all">
+                                <i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i>Transfer Now
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-3">
+                            Current room: <strong class="text-slate-600">{{ patient.room.name }}</strong> (Token #{{ patient.token }})
+                        </p>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- Previous Consultations History Timeline -->
+    {% if previous_visits %}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h2 class="text-base font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-2.5"></i>
+                    Previous Consultations for {{ patient.pid }}
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {{ previous_visits.count }} record{{ previous_visits.count|pluralize }}
+                    </span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Full history of patient's previous clinic visits, room assignments, notes, and outcomes.</p>
+            </div>
+            <div class="p-6">
+                <ol class="relative border-l border-indigo-100 space-y-6 ml-3">
+                    {% for visit in previous_visits %}
+                        <li class="ml-6">
+                            <!-- Timeline dot -->
+                            <span class="absolute -left-3.5 flex items-center justify-center w-7 h-7 rounded-full ring-4 ring-white shadow-sm
+                                {% if visit.status == 'COMPLETED' %}bg-emerald-100 text-emerald-600
+                                {% elif visit.status == 'TRANSFERRED' %}bg-amber-100 text-amber-600
+                                {% elif visit.status == 'CANCELLED' %}bg-rose-100 text-rose-600
+                                {% elif visit.status == 'IN_PROGRESS' %}bg-indigo-100 text-indigo-600
+                                {% else %}bg-blue-100 text-blue-600{% endif %}">
+                                {% if visit.status == 'COMPLETED' %}
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                {% elif visit.status == 'TRANSFERRED' %}
+                                    <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
+                                {% elif visit.status == 'CANCELLED' %}
+                                    <i class="fa-solid fa-ban text-xs"></i>
+                                {% elif visit.status == 'IN_PROGRESS' %}
+                                    <i class="fa-solid fa-stethoscope text-xs"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-hourglass-half text-xs"></i>
+                                {% endif %}
+                            </span>
+
+                            <!-- Content -->
+                            <div class="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                                <!-- Title Row -->
+                                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-bold text-slate-900">
+                                            {{ visit.room.name }}
+                                        </span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border
+                                            {% if visit.status == 'COMPLETED' %}bg-emerald-50 border-emerald-200 text-emerald-800
+                                            {% elif visit.status == 'TRANSFERRED' %}bg-amber-50 border-amber-200 text-amber-800
+                                            {% elif visit.status == 'CANCELLED' %}bg-rose-50 border-rose-200 text-rose-800
+                                            {% elif visit.status == 'IN_PROGRESS' %}bg-indigo-50 border-indigo-200 text-indigo-800
+                                            {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+                                            {{ visit.get_status_display }}
+                                        </span>
+                                        <span class="text-xs text-slate-500">Token #{{ visit.token }}</span>
+                                    </div>
+                                    <time class="text-xs text-slate-400 whitespace-nowrap">
+                                        {{ visit.created_at|date:"M d, Y" }} &bull; {{ visit.created_at|date:"P" }}
+                                    </time>
+                                </div>
+
+                                <!-- Meta Row -->
+                                <div class="flex flex-wrap gap-3 text-xs text-slate-500 mb-2">
+                                    <span><i class="fa-solid fa-heart-pulse mr-1 text-slate-400"></i>{{ visit.condition.name }}</span>
+                                    {% if visit.transfers.exists %}
+                                        <span class="text-amber-600 font-medium">
+                                            <i class="fa-solid fa-arrow-right-arrow-left mr-1"></i>
+                                            Transferred to {{ visit.transfers.first.room.name }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Doctor Notes -->
+                                {% if visit.note %}
+                                    <div class="mt-2 pt-2 border-t border-slate-200">
+                                        <p class="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">
+                                            <i class="fa-solid fa-notes-medical mr-1"></i>Doctor Notes
+                                        </p>
+                                        <p class="text-sm text-slate-700 italic">"{{ visit.note }}"</p>
+                                    </div>
+                                {% else %}
+                                    <p class="text-xs text-slate-400 italic mt-1">No notes recorded for this visit.</p>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

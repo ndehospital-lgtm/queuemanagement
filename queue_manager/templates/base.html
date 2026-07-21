@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Queue Management - Eye Hospital{% endblock %}</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50:  '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Sidebar width tokens */
+        :root {
+            --sidebar-w: 240px;
+            --sidebar-collapsed-w: 68px;
+        }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            width: var(--sidebar-w);
+            transition: width 0.25s ease;
+            overflow: hidden;
+        }
+        #sidebar.collapsed {
+            width: var(--sidebar-collapsed-w);
+        }
+        #sidebar .nav-label {
+            transition: opacity 0.15s ease, width 0.15s ease;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        #sidebar.collapsed .nav-label { opacity: 0; width: 0; }
+        #sidebar.collapsed .sidebar-logo-text { display: none; }
+        #sidebar.collapsed .user-details { display: none; }
+        #sidebar.collapsed .section-label { display: none; }
+
+        /* Main shifts right */
+        #main-wrapper {
+            margin-left: var(--sidebar-w);
+            transition: margin-left 0.25s ease;
+        }
+        #main-wrapper.collapsed { margin-left: var(--sidebar-collapsed-w); }
+
+        /* Active nav item */
+        .nav-item.active {
+            background: rgba(99,102,241,0.12);
+            color: #4f46e5;
+        }
+        .nav-item.active .nav-icon { color: #4f46e5; }
+        .nav-item { border-radius: 10px; }
+
+        /* Pulse animation */
+        @keyframes pulse-ring {
+            0%   { transform: scale(0.95); opacity: 0.8; }
+            50%  { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-active { animation: pulse-ring 2s infinite ease-in-out; }
+
+        /* New-item highlight */
+        @keyframes highlight-fade {
+            0%   { background-color: rgba(99,102,241,0.15); }
+            100% { background-color: transparent; }
+        }
+        .animate-highlight { animation: highlight-fade 3s ease-out; }
+
+        /* Mobile overlay */
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 39;
+        }
+        @media (max-width: 767px) {
+            #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 40; transform: translateX(-100%); width: var(--sidebar-w) !important; transition: transform 0.25s ease; }
+            #sidebar.mobile-open { transform: translateX(0); }
+            #sidebar-overlay.show { display: block; }
+            #main-wrapper { margin-left: 0 !important; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-50 text-slate-800 flex">
+
+<!-- ══════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════ -->
+<aside id="sidebar" class="fixed top-0 left-0 h-full bg-white border-r border-slate-200 flex flex-col z-40 shadow-sm">
+
+    <!-- Logo / Brand -->
+    <div class="flex items-center gap-3 px-4 py-5 border-b border-slate-100">
+        <div class="flex-shrink-0 bg-indigo-600 text-white w-9 h-9 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200">
+            <i class="fa-solid fa-eye text-base"></i>
+        </div>
+        <span class="sidebar-logo-text font-extrabold text-base tracking-tight text-slate-900 nav-label">
+            ClearVision <span class="text-indigo-600 font-semibold">Queue</span>
+        </span>
+    </div>
+
+    <!-- Nav Links -->
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        {% if user.is_authenticated %}
+
+        <p class="section-label px-2 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Main</p>
+
+        <a href="{% url 'dashboard' %}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="nav-icon fa-solid fa-chart-line w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Dashboard</span>
+        </a>
+
+        {% if user.is_superuser or user.profile.can_add_patient %}
+        <a href="{% url 'add_patient' %}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'add_patient' %}active{% endif %}">
+            <i class="nav-icon fa-solid fa-user-plus w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Add Patient</span>
+        </a>
+        {% endif %}
+
+        <a href="{% url 'track_patient' %}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'track_patient' %}active{% endif %}">
+            <i class="nav-icon fa-solid fa-magnifying-glass w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Track Patient</span>
+        </a>
+
+        <a href="{% url 'calling_board' %}" target="_blank"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'calling_board' %}active{% endif %}">
+            <i class="nav-icon fa-solid fa-tv w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Calling Board</span>
+        </a>
+
+        {% if user.is_superuser or user.profile.can_manage_settings %}
+        <div class="pt-4">
+            <p class="section-label px-2 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin</p>
+            <a href="{% url 'settings' %}"
+                class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                <i class="nav-icon fa-solid fa-sliders w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+                <span class="nav-label">Settings</span>
+            </a>
+        </div>
+         <div class="pt-4">
+            <p class="section-label px-2 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ticket</p>
+            <a href="{% url 'problem' %}"
+                class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all {% if request.resolver_match.url_name == 'problem' %}active{% endif %}">
+                <i class="nav-icon fa-solid fa-ticket w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+                <span class="nav-label">Add Problem</span>
+            </a>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Not authenticated -->
+        <a href="{% url 'track_patient' %}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            <i class="nav-icon fa-solid fa-magnifying-glass w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Track Token</span>
+        </a>
+        <a href="{% url 'login' %}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            <i class="nav-icon fa-solid fa-right-to-bracket w-5 text-center text-slate-400 text-base flex-shrink-0"></i>
+            <span class="nav-label">Staff Login</span>
+        </a>
+        {% endif %}
+    </nav>
+
+    <!-- Bottom: User Card + Collapse Toggle -->
+    <div class="border-t border-slate-100 px-3 py-3 space-y-2">
+        {% if user.is_authenticated %}
+        <!-- User info -->
+        <div class="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-slate-50">
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                {{ user.username|slice:":2"|upper }}
+            </div>
+            <div class="user-details min-w-0 flex-1">
+                <p class="text-xs font-bold text-slate-800 truncate leading-tight">{{ user.username }}</p>
+                <span class="text-[10px] font-medium text-indigo-600 leading-tight">{{ user.profile.speciality.name|default:"Staff" }}</span>
+            </div>
+            <a href="{% url 'logout' %}" class="user-details flex-shrink-0 p-1 text-slate-400 hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-50" title="Logout">
+                <i class="fa-solid fa-right-from-bracket text-xs"></i>
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Collapse toggle (desktop) -->
+        <button id="sidebar-toggle"
+            class="hidden md:flex w-full items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
+            <i id="toggle-icon" class="fa-solid fa-chevron-left text-xs"></i>
+            <span class="nav-label">Collapse</span>
+        </button>
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay"></div>
+
+<!-- ══════════════════════════════════════
+     MAIN WRAPPER
+══════════════════════════════════════ -->
+<div id="main-wrapper" class="flex flex-col flex-1 min-h-full min-w-0">
+
+    <!-- Top bar (mobile hamburger + page breadcrumb) -->
+    <header class="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200 flex items-center gap-3 px-4 py-3">
+        <button id="mobile-menu-btn" class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div class="flex items-center gap-2 text-indigo-600">
+            <div class="bg-indigo-600 text-white p-1.5 rounded-lg">
+                <i class="fa-solid fa-eye text-sm"></i>
+            </div>
+            <span class="font-extrabold text-base tracking-tight text-slate-900">ClearVision <span class="text-indigo-600 font-semibold">Queue</span></span>
+        </div>
+    </header>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-md w-full pointer-events-none">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast-item pointer-events-auto flex items-center p-4 rounded-xl border shadow-lg transition-all duration-300
+                    {% if message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800
+                    {% elif message.tags == 'error' %}bg-rose-50 border-rose-200 text-rose-800
+                    {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+                    <div class="mr-3">
+                        {% if message.tags == 'success' %}<i class="fa-solid fa-circle-check text-xl text-emerald-500"></i>
+                        {% elif message.tags == 'error' %}<i class="fa-solid fa-circle-exclamation text-xl text-rose-500"></i>
+                        {% else %}<i class="fa-solid fa-circle-info text-xl text-blue-500"></i>{% endif %}
+                    </div>
+                    <div class="text-sm font-medium flex-1">{{ message }}</div>
+                    <button onclick="this.parentElement.remove()" class="ml-4 text-slate-400 hover:text-slate-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Content -->
+    <main class="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-100 py-4 px-8 text-center text-xs text-slate-400">
+        &copy; 2026 ClearVision Eye Hospital Queue Management System
+    </footer>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const sidebar       = document.getElementById('sidebar');
+    const mainWrapper   = document.getElementById('main-wrapper');
+    const toggleBtn     = document.getElementById('sidebar-toggle');
+    const toggleIcon    = document.getElementById('toggle-icon');
+    const mobileBtn     = document.getElementById('mobile-menu-btn');
+    const overlay       = document.getElementById('sidebar-overlay');
+
+    // ── Desktop collapse / expand ──
+    let collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+
+    function applyCollapse() {
+        if (collapsed) {
+            sidebar.classList.add('collapsed');
+            mainWrapper.classList.add('collapsed');
+            toggleIcon.className = 'fa-solid fa-chevron-right text-xs';
+        } else {
+            sidebar.classList.remove('collapsed');
+            mainWrapper.classList.remove('collapsed');
+            toggleIcon.className = 'fa-solid fa-chevron-left text-xs';
+        }
+    }
+    applyCollapse();
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            collapsed = !collapsed;
+            localStorage.setItem('sidebar_collapsed', collapsed);
+            applyCollapse();
+        });
+    }
+
+    // ── Mobile open / close ──
+    function openMobile() {
+        sidebar.classList.add('mobile-open');
+        overlay.classList.add('show');
+    }
+    function closeMobile() {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('show');
+    }
+    if (mobileBtn)  mobileBtn.addEventListener('click', openMobile);
+    if (overlay)    overlay.addEventListener('click', closeMobile);
+
+    // ── Auto-dismiss toasts ──
+    document.querySelectorAll('.toast-item').forEach(toast => {
+        setTimeout(() => {
+            toast.style.transform   = 'translateY(8px)';
+            toast.style.opacity     = '0';
+            toast.style.transition  = 'all 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    });
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

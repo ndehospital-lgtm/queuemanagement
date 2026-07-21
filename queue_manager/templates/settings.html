@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - ClearVision Queue{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="mb-8">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">System Settings</h1>
+        <p class="mt-2 text-sm text-slate-600">Configure medical conditions, clinic rooms, and manage hospital staff credentials.</p>
+    </div>
+
+    <!-- 3-Column Symmetrical Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- COLUMN 1: STAFF MANAGEMENT -->
+        <div class="space-y-8">
+            <!-- Rooms List with Start Token Config -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-list-ol text-indigo-600 mr-2.5"></i>Clinic Rooms Directory
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">Set the first token number each room issues daily. Tokens continue from the last number if patients already exist.</p>
+                </div>
+                <div class="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+                    {% for rm in rooms %}
+                        <div class="px-5 py-4 hover:bg-slate-50 transition-colors">
+                            <!-- Room info -->
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-900">{{ rm.name }}</span>
+                                    <span class="ml-2 text-xs text-slate-500">{{ rm.description|default:"No description" }}</span>
+                                </div>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                    Starts at #{{ rm.start_token }}
+                                </span>
+                            </div>
+                            <!-- Inline start token form -->
+                            <form method="POST" class="flex items-center gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_start_token">
+                                <input type="hidden" name="room_id" value="{{ rm.id }}">
+                                <div class="relative flex-1">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs font-bold">#</span>
+                                    <input type="number" name="start_token" min="1"
+                                        value="{{ rm.start_token }}"
+                                        placeholder="1"
+                                        class="pl-7 block w-full px-3 py-1.5 border border-slate-300 rounded-lg text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                                </div>
+                                <button type="submit"
+                                    class="flex-shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all">
+                                    <i class="fa-solid fa-floppy-disk mr-1"></i>Set
+                                </button>
+                            </form>
+                        </div>
+                    {% empty %}
+                        <div class="px-6 py-8 text-center text-xs text-slate-500">
+                            No clinic rooms configured.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Add Staff Card -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-user-plus text-indigo-600 mr-2.5"></i>Add Staff Member
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <form method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_staff">
+                        
+                        <div>
+                            <label for="username" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Username</label>
+                            <input type="text" name="username" id="username" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="doctor_smith">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Email (Optional)</label>
+                            <input type="email" name="email" id="email"
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="smith@hospital.com">
+                        </div>
+                        <div>
+                            <label for="password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Password</label>
+                            <input type="password" name="password" id="password" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label for="speciality" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Speciality / Role</label>
+                            <select name="speciality" id="speciality" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all">
+                                {% for spec in specialities %}
+                                    <option value="{{ spec.id }}">{{ spec.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Permission Checkboxes -->
+                        <div class="space-y-2 pt-3 border-t border-slate-100">
+                            <span class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">System Permissions</span>
+                            <div class="space-y-2">
+                                <label class="relative flex items-start select-none cursor-pointer">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" name="can_add_patient" id="can_add_patient" checked
+                                            class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 rounded transition-all">
+                                    </div>
+                                    <div class="ml-3 text-xs">
+                                        <span class="font-medium text-slate-900">Can Register Patients (Intake)</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-start select-none cursor-pointer">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" name="can_serve_patient" id="can_serve_patient" checked
+                                            class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 rounded transition-all">
+                                    </div>
+                                    <div class="ml-3 text-xs">
+                                        <span class="font-medium text-slate-900">Can Serve / Call Patients (Clinical)</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-start select-none cursor-pointer">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" name="can_manage_settings" id="can_manage_settings"
+                                            class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 rounded transition-all">
+                                    </div>
+                                    <div class="ml-3 text-xs">
+                                        <span class="font-medium text-slate-900">Can Manage Settings (Admin)</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit"
+                                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition-all">
+                                <i class="fa-solid fa-plus mr-1"></i>Register Staff
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Add Role/Speciality Card -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-id-card-clip text-indigo-600 mr-2.5"></i>Add Role / Speciality
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <form method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_speciality">
+                        
+                        <div>
+                            <label for="spec-name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Role Name</label>
+                            <input type="text" name="name" id="spec-name" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="e.g. Nurse Assistant, Surgeon">
+                        </div>
+
+                        <div>
+                            <label for="spec-desc" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Description (Optional)</label>
+                            <input type="text" name="description" id="spec-desc"
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="e.g. Conducts preliminary screening">
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit"
+                                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition-all">
+                                <i class="fa-solid fa-plus mr-1"></i>Add Role
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Staff List -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-users text-indigo-600 mr-2.5"></i>Staff Directory
+                    </h2>
+                </div>
+                <div class="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                    {% for member in staff_members %}
+                        <div class="px-6 py-3.5 flex flex-col justify-center hover:bg-slate-50 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2.5 min-w-0">
+                                    <div class="bg-indigo-50 text-indigo-600 h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                        {{ member.user.username|slice:":2"|upper }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 class="text-xs font-semibold text-slate-900 truncate">{{ member.user.username }}</h3>
+                                        <span class="inline-flex mt-0.5 items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+                                            {{ member.speciality.name|default:"General Staff" }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2.5 flex flex-wrap gap-1">
+                                {% if member.can_add_patient %}<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-[9px] font-bold text-emerald-700 border border-emerald-100">Intake</span>{% endif %}
+                                {% if member.can_serve_patient %}<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-[9px] font-bold text-indigo-700 border border-indigo-100">Serve</span>{% endif %}
+                                {% if member.can_manage_settings %}<span class="px-1.5 py-0.5 rounded bg-purple-50 text-[9px] font-bold text-purple-700 border border-purple-100">Admin</span>{% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="px-6 py-8 text-center text-xs text-slate-500">
+                            No staff registered.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- COLUMN 2: CONDITION MANAGEMENT -->
+        <div class="space-y-8">
+            <!-- Add Condition -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-heart-pulse text-indigo-600 mr-2.5"></i>Add Patient Condition
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <form method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_condition">
+                        
+                        <div>
+                            <label for="cond-name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Condition Name</label>
+                            <input type="text" name="name" id="cond-name" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="e.g. Critical, Post-Op">
+                        </div>
+
+                        <div>
+                            <label for="color_theme" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Color Tag</label>
+                            <select name="color_theme" id="color_theme" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all">
+                                {% for theme in color_themes %}
+                                    <option value="{{ theme }}">{{ theme|capfirst }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit"
+                                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition-all">
+                                <i class="fa-solid fa-plus mr-1"></i>Add Condition
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Conditions List -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-tags text-indigo-600 mr-2.5"></i>Available Conditions
+                    </h2>
+                </div>
+                <div class="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                    {% for cond in conditions %}
+                        <div class="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <span class="text-sm font-medium text-slate-900">{{ cond.name }}</span>
+                            
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border 
+                                {% if cond.color_theme == 'emerald' %}
+                                    bg-emerald-50 border-emerald-200 text-emerald-800
+                                {% elif cond.color_theme == 'rose' %}
+                                    bg-rose-50 border-rose-200 text-rose-800
+                                {% elif cond.color_theme == 'amber' %}
+                                    bg-amber-50 border-amber-200 text-amber-800
+                                {% elif cond.color_theme == 'purple' %}
+                                    bg-purple-50 border-purple-200 text-purple-800
+                                {% elif cond.color_theme == 'indigo' %}
+                                    bg-indigo-50 border-indigo-200 text-indigo-800
+                                {% elif cond.color_theme == 'orange' %}
+                                    bg-orange-50 border-orange-200 text-orange-800
+                                {% elif cond.color_theme == 'sky' %}
+                                    bg-sky-50 border-sky-200 text-sky-800
+                                {% else %}
+                                    bg-blue-50 border-blue-200 text-blue-800
+                                {% endif %}">
+                                Tag
+                            </span>
+                        </div>
+                    {% empty %}
+                        <div class="px-6 py-8 text-center text-xs text-slate-500">
+                            No conditions configured.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 3: ROOM MANAGEMENT -->
+        <div class="space-y-8">
+            <!-- Add Room -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h2 class="text-base font-bold text-slate-950 flex items-center">
+                        <i class="fa-solid fa-door-open text-indigo-600 mr-2.5"></i>Add Clinic Room
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <form method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_room">
+                        
+                        <div>
+                            <label for="room-name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Room Name</label>
+                            <input type="text" name="name" id="room-name" required
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="e.g. Room 4, OPD-2">
+                        </div>
+
+                        <div>
+                            <label for="room-desc" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Description (Optional)</label>
+                            <input type="text" name="description" id="room-desc"
+                                class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                placeholder="e.g. Pediatric Eye Checkups">
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit"
+                                class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition-all">
+                                <i class="fa-solid fa-plus mr-1"></i>Add Room
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+        <!-- Room Groups Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                <h2 class="text-base font-bold text-slate-950 flex items-center">
+                    <i class="fa-solid fa-layer-group text-indigo-600 mr-2.5"></i>Room Groups / States
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Group rooms together so staff can quickly direct patients by department (e.g. "Consultation" → Room 101, 102).</p>
+            </div>
+            <div class="p-6">
+                <form method="POST" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_room_group">
+
+                    <div>
+                        <label for="group-name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Group / State Name</label>
+                        <input type="text" name="group_name" id="group-name" required
+                            class="mt-1.5 block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                            placeholder="e.g. Consultation, OPD, Emergency">
+                    </div>
+
+                    <div>
+                        <span class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Assign Rooms</span>
+                        <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+                            {% for rm in rooms %}
+                            <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50 cursor-pointer transition-colors">
+                                <input type="checkbox" name="group_rooms" value="{{ rm.id }}"
+                                    class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm font-medium text-slate-800">{{ rm.name }}</span>
+                                {% if rm.description %}
+                                    <span class="text-xs text-slate-400 truncate">{{ rm.description }}</span>
+                                {% endif %}
+                            </label>
+                            {% empty %}
+                            <div class="px-4 py-3 text-xs text-slate-400">No rooms available. Add rooms first.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition-all">
+                        <i class="fa-solid fa-plus mr-1"></i>Create Group
+                    </button>
+                </form>
+            </div>
+
+            <!-- Existing Groups -->
+            {% if room_groups %}
+            <div class="border-t border-slate-100">
+                <div class="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+                    {% for grp in room_groups %}
+                    <div class="transition-colors">
+                        <!-- Group Header Row -->
+                        <div class="px-5 py-4 flex items-start justify-between gap-3 hover:bg-slate-50">
+                            <div class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-slate-900">{{ grp.name }}</span>
+                                <div class="mt-1.5 flex flex-wrap gap-1">
+                                    {% for rm in grp.rooms.all %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            <i class="fa-solid fa-door-open mr-1 text-[9px]"></i>{{ rm.name }}
+                                        </span>
+                                    {% empty %}
+                                        <span class="text-xs text-slate-400 italic">No rooms assigned</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <!-- Action buttons -->
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button type="button"
+                                    onclick="toggleGroupEdit({{ grp.id }})"
+                                    class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                    title="Edit group">
+                                    <i class="fa-solid fa-pen text-xs"></i>
+                                </button>
+                                <form method="POST" onsubmit="return confirm('Delete group \'{{ grp.name }}\'?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_room_group">
+                                    <input type="hidden" name="group_id" value="{{ grp.id }}">
+                                    <button type="submit"
+                                        class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                        title="Delete group">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Inline Edit Form (hidden by default) -->
+                        <div id="edit-group-{{ grp.id }}" class="hidden px-5 pb-5 bg-indigo-50/40 border-t border-indigo-100">
+                            <form method="POST" class="space-y-3 pt-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="edit_room_group">
+                                <input type="hidden" name="group_id" value="{{ grp.id }}">
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Group Name</label>
+                                    <input type="text" name="group_name" value="{{ grp.name }}" required
+                                        class="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all bg-white">
+                                </div>
+
+                                <div>
+                                    <span class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Rooms</span>
+                                    <div class="border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white max-h-36 overflow-y-auto">
+                                        {% for rm in rooms %}
+                                        <label class="flex items-center gap-3 px-4 py-2 hover:bg-indigo-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="group_rooms" value="{{ rm.id }}"
+                                                {% if rm in grp.rooms.all %}checked{% endif %}
+                                                class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                            <span class="text-sm font-medium text-slate-800">{{ rm.name }}</span>
+                                            {% if rm.description %}
+                                                <span class="text-xs text-slate-400 truncate">{{ rm.description }}</span>
+                                            {% endif %}
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2 pt-1">
+                                    <button type="submit"
+                                        class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
+                                        <i class="fa-solid fa-floppy-disk mr-1"></i>Save Changes
+                                    </button>
+                                    <button type="button"
+                                        onclick="toggleGroupEdit({{ grp.id }})"
+                                        class="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-all">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleGroupEdit(groupId) {
+    const panel = document.getElementById('edit-group-' + groupId);
+    panel.classList.toggle('hidden');
+}
+</script>
+{% endblock %}

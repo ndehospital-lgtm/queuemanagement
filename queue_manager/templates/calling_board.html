@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearVision - Now Calling</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #ffffff;
+            color: #0f172a;
+            overflow-y: auto;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.5; }
+            100% { transform: scale(0.95); opacity: 1; }
+        }
+        .calling-box {
+            animation: pulse-ring 2.5s infinite ease-in-out;
+        }
+        @keyframes flash-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .flashing {
+            animation: flash-text 0.8s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-8 md:p-12 select-none">
+
+    <!-- TOP CONTROL & HEADER -->
+    <header class="flex items-center justify-between border-b border-slate-100 pb-6 mb-6">
+        <div class="flex items-center space-x-4">
+            <div class="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg">
+                <i class="fa-solid fa-eye text-3xl"></i>
+            </div>
+            <div>
+                <h1 id="board-title" class="text-3xl md:text-4xl font-extrabold tracking-tight">ClearVision Clinic</h1>
+                <p id="board-subtitle" class="text-slate-500 font-semibold text-sm md:text-base">Real-time Calling Board</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="btn-change-room" class="p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-indigo-600 rounded-xl transition-all font-semibold text-xs flex items-center gap-1.5" title="Change Screen Assignment">
+                <i class="fa-solid fa-sliders text-sm"></i> Change Screen
+            </button>
+            <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-ping"></span>Live Connected
+            </span>
+        </div>
+    </header>
+
+    <!-- 1. MULTI-ROOM GRID VIEW (Tighter padding, smaller margins, and 4-column layout to fit more rooms) -->
+    <main id="multi-room-view" class="hidden flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch py-2">
+        {% for room in rooms %}
+            <div id="room-card-{{ room.id }}" class="border border-slate-100 bg-white rounded-2xl p-4 flex flex-col justify-between min-h-[14rem] shadow-sm transition-all duration-300">
+                <h2 class="text-base font-extrabold text-slate-400 uppercase tracking-wider text-center mb-1.5">{{ room.name }}</h2>
+                <div class="flex-1 flex flex-col items-center justify-center">
+                    <div id="room-token-container-{{ room.id }}" class="text-center w-full space-y-2">
+                        {% for r_id, p_list in active_calls.items %}
+                            {% if r_id == room.id %}
+                                {% if p_list %}
+                                    <div id="active-call-content-{{ room.id }}" class="space-y-1.5 w-full">
+                                        {% for p_obj in p_list %}
+                                            <div class="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors w-full">
+                                                <span class="text-xl font-black text-rose-600 font-mono">T#{{ p_obj.token }}</span>
+                                                <span class="text-xs font-bold text-slate-800 truncate max-w-[120px]">{{ p_obj.name }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div id="active-call-content-{{ room.id }}" class="text-slate-300 text-sm font-semibold italic py-6">
+                                        No active call
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="text-center border-t border-slate-50 pt-3 text-xs font-semibold text-slate-400">
+                    {{ room.description|default:"Consultation clinic" }}
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-span-full text-center py-16 text-slate-400 text-lg">
+                No rooms configured.
+            </div>
+        {% endfor %}
+    </main>
+
+    <!-- 2. SINGLE ROOM FULLSCREEN VIEW -->
+    <main id="single-room-view" class="hidden flex-1 flex flex-col items-center justify-center text-center py-6 w-full">
+        <!-- Room Tag Header -->
+        <h2 id="single-room-name" class="text-4xl md:text-5xl font-black text-slate-400 uppercase tracking-widest mb-6">ROOM --</h2>
+        
+        <!-- Large High-Contrast Display Panel -->
+        <div id="single-patients-container" class="w-full max-w-6xl px-8 grid gap-8 justify-center items-stretch grid-cols-1">
+            <!-- Dynamic elements will be inserted here. If 1 patient, it spans full, if 2 or 3, it displays side by side columns -->
+        </div>
+        
+        <!-- Room Description / Notice -->
+        <p id="single-room-desc" class="text-slate-400 font-semibold mt-8 text-lg">Room description</p>
+    </main>
+
+    <!-- TV Footer -->
+    <footer class="border-t border-slate-100 pt-6 mt-6 flex justify-between items-center text-xs md:text-sm font-semibold text-slate-400">
+        <div>Please keep your token tickets ready and proceed to your room when called.</div>
+        <div id="tv-clock" class="text-slate-600 font-extrabold text-base">00:00:00 AM</div>
+    </footer>
+
+    <!-- ROOM SELECTION MODAL (Initial setup screen) -->
+    <div id="room-selection-overlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl text-center space-y-6">
+            <div class="mx-auto w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
+                <i class="fa-solid fa-tv"></i>
+            </div>
+            <div>
+                <h3 class="text-2xl font-extrabold text-slate-900">Setup TV Board Screen</h3>
+                <p class="text-sm text-slate-500 mt-1.5">Select the room assignment for this display screen.</p>
+            </div>
+            <div class="grid grid-cols-1 gap-3 max-h-72 overflow-y-auto p-1.5">
+                <button onclick="setScreenAssignment('all', 'All Rooms')" class="w-full py-3.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold shadow-md shadow-indigo-100 transition-all">
+                    All Rooms Dashboard
+                </button>
+                {% for room in rooms %}
+                    <button onclick="setScreenAssignment('{{ room.id }}', '{{ room.name }}', '{{ room.description|default:"" }}')" class="w-full py-3 px-5 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-800 hover:text-indigo-700 rounded-2xl text-sm font-semibold transition-all">
+                        {{ room.name }} (Only)
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Alert Notice Banner (Overlay hidden by default) -->
+    <div id="fullscreen-notice" class="hidden fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-8 transition-opacity duration-300">
+        <div class="text-center space-y-8 max-w-4xl">
+            <span class="inline-flex items-center justify-center h-28 w-28 rounded-full bg-indigo-50 text-indigo-600 animate-bounce mb-4 text-5xl">
+                <i class="fa-solid fa-volume-high"></i>
+            </span>
+            <h2 class="text-4xl md:text-5xl font-extrabold text-slate-500 uppercase tracking-widest flashing">NOW CALLING</h2>
+            
+            <div class="space-y-4">
+                <div id="notice-token" class="text-9xl md:text-[12rem] font-black text-rose-600 tracking-tighter leading-none font-mono">
+                    T#--
+                </div>
+                <div id="notice-name" class="text-4xl md:text-5xl font-bold text-slate-800 py-2">
+                    Patient Name
+                </div>
+            </div>
+            
+            <div class="inline-block px-10 py-5 bg-slate-900 text-white rounded-3xl text-3xl md:text-4xl font-extrabold shadow-2xl">
+                Please proceed to <span id="notice-room" class="text-indigo-400">Room --</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcement sound chimes -->
+    <audio id="chime-ring" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav" preload="auto"></audio>
+
+    <script>
+        // Store pre-loaded Room patient values in local dictionary
+        const currentCalls = {
+            {% for r_id, p_list in active_calls.items %}
+                "{{ r_id }}": [
+                    {% for p_obj in p_list %}
+                        { id: {{ p_obj.id }}, token: "{{ p_obj.token }}", name: "{{ p_obj.name }}" },
+                    {% endfor %}
+                ],
+            {% endfor %}
+        };
+
+        // Room details detail objects
+        const roomDetails = {
+            {% for rm in rooms %}
+                "{{ rm.id }}": {
+                    name: "{{ rm.name }}",
+                    desc: "{{ rm.description|default:'Consultation clinic' }}"
+                },
+            {% endfor %}
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const chime = document.getElementById('chime-ring');
+            const notice = document.getElementById('fullscreen-notice');
+            const noticeToken = document.getElementById('notice-token');
+            const noticeName = document.getElementById('notice-name');
+            const noticeRoom = document.getElementById('notice-room');
+
+            // Setup WebSocket connection
+            const socketScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            const socketUrl = socketScheme + window.location.host + '/ws/queue/';
+            const socket = new WebSocket(socketUrl);
+
+            // Restore screen selection
+            restoreScreenAssignment();
+
+            document.getElementById('btn-change-room').addEventListener('click', () => {
+                document.getElementById('room-selection-overlay').classList.remove('hidden');
+            });
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (!data) return;
+
+                console.log('WS event received:', data);
+
+                if (data.action === 'update') {
+                    const p = data.patient;
+                    
+                    if (p.status === 'IN_PROGRESS') {
+                        // Check if this update matches our assigned screen filter
+                        const assignedId = localStorage.getItem('assigned_room_id');
+                        const isAssignedRoom = (assignedId === 'all' || assignedId == p.room_id);
+
+                        if (isAssignedRoom) {
+                            // 1. Play announcement sound
+                            chime.currentTime = 0;
+                            chime.play().catch(e => console.log('Audio autoplay blocked: ', e));
+
+                            // 2. Trigger high-visibility overlay (with red text color and T# prefix!)
+                            noticeToken.innerText = `T#${p.token}`;
+                            noticeName.innerText = p.name;
+                            noticeRoom.innerText = p.room_no;
+
+                            notice.classList.remove('hidden', 'opacity-0');
+                            notice.classList.add('opacity-100');
+
+                            // 2b. Speak the announcement aloud using browser Text-to-Speech
+                            // Wait 500ms after chime starts to begin speaking
+                            setTimeout(() => {
+                                try {
+                                    window.speechSynthesis.cancel(); // Stop any current speech
+                                    const textToSpeak = `Token ${p.token}. ${p.name}. ${p.room_no}`;
+                                    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                                    utterance.rate = 0.85; // Natural speaking rate
+                                    utterance.pitch = 1.0;
+                                    window.speechSynthesis.speak(utterance);
+                                } catch (err) {
+                                    console.error('Speech synthesis error:', err);
+                                }
+                            }, 600);
+                        }
+
+                        // 3. Highlight room card on multi-view
+                        const card = document.getElementById(`room-card-${p.room_id}`);
+                        if (card) {
+                            card.classList.add('ring-4', 'ring-indigo-600', 'border-indigo-600', 'scale-105');
+                        }
+
+                        // 4. Update memory cache:
+                        if (!currentCalls[p.room_id]) {
+                            currentCalls[p.room_id] = [];
+                        }
+                        // Remove if already exists to prevent duplicate
+                        currentCalls[p.room_id] = currentCalls[p.room_id].filter(x => x.id !== p.id);
+                        // Add at the front (most recent first)
+                        currentCalls[p.room_id].unshift({ id: p.id, token: p.token, name: p.name });
+                        currentCalls[p.room_id] = currentCalls[p.room_id].slice(0, 3);
+
+                        // 5. Update UI representations
+                        updateUIRoomDisplays(p.room_id);
+
+                        // 6. Timeout to hide overlay after 8 seconds
+                        setTimeout(() => {
+                            notice.classList.add('opacity-0');
+                            setTimeout(() => {
+                                notice.classList.add('hidden');
+                            }, 300);
+                            
+                            // Remove highlights
+                            if (card) {
+                                card.classList.remove('ring-4', 'ring-indigo-600', 'border-indigo-600', 'scale-105');
+                            }
+                        }, 8000);
+                    } else if (p.status === 'COMPLETED' || p.status === 'CANCELLED' || p.status === 'TRANSFERRED') {
+                        // Remove from active list
+                        if (currentCalls[p.room_id]) {
+                            currentCalls[p.room_id] = currentCalls[p.room_id].filter(x => x.id !== p.id);
+                        }
+                        updateUIRoomDisplays(p.room_id);
+                    }
+                } else if (data.action === 'delete') {
+                    // Remove from all rooms
+                    for (const roomId in currentCalls) {
+                        currentCalls[roomId] = currentCalls[roomId].filter(x => x.id !== data.patient.id);
+                        updateUIRoomDisplays(roomId);
+                    }
+                }
+            };
+
+            socket.onclose = function(e) {
+                console.warn('TV Calling Board WebSocket closed. Reconnecting...');
+                setTimeout(() => window.location.reload(), 5000);
+            };
+
+            // TV Clock Update
+            setInterval(() => {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                const hourStr = String(hours).padStart(2, '0');
+                document.getElementById('tv-clock').innerText = `${hourStr}:${minutes}:${seconds} ${ampm}`;
+            }, 1000);
+        });
+
+        // Setup selection routing
+        function setScreenAssignment(id, name, desc = '') {
+            localStorage.setItem('assigned_room_id', id);
+            localStorage.setItem('assigned_room_name', name);
+            localStorage.setItem('assigned_room_desc', desc);
+            document.getElementById('room-selection-overlay').classList.add('hidden');
+            renderActiveView(id, name, desc);
+        }
+
+        function restoreScreenAssignment() {
+            const id = localStorage.getItem('assigned_room_id');
+            const name = localStorage.getItem('assigned_room_name');
+            const desc = localStorage.getItem('assigned_room_desc') || '';
+            if (id) {
+                document.getElementById('room-selection-overlay').classList.add('hidden');
+                renderActiveView(id, name, desc);
+            } else {
+                document.getElementById('room-selection-overlay').classList.remove('hidden');
+            }
+        }
+
+        function renderActiveView(id, name, desc) {
+            const multiView = document.getElementById('multi-room-view');
+            const singleView = document.getElementById('single-room-view');
+            const title = document.getElementById('board-title');
+            const subtitle = document.getElementById('board-subtitle');
+
+            if (id === 'all') {
+                singleView.classList.add('hidden');
+                multiView.classList.remove('hidden');
+                title.innerText = 'ClearVision Clinic';
+                subtitle.innerText = 'Real-time Calling Board • All Rooms';
+            } else {
+                multiView.classList.add('hidden');
+                singleView.classList.remove('hidden');
+                title.innerText = name;
+                subtitle.innerText = desc || 'Consultation Monitor';
+
+                // Render room details
+                document.getElementById('single-room-name').innerText = name;
+                document.getElementById('single-room-desc').innerText = desc || 'Please proceed inside when your token number is displayed.';
+
+                // Trigger UI update using cached memory list
+                updateUIRoomDisplays(id);
+            }
+        }
+
+        // Apply state updates to both visual components
+        function updateUIRoomDisplays(roomId) {
+            const list = currentCalls[roomId] || [];
+
+            // 1. Multi view updater
+            const container = document.getElementById(`room-token-container-${roomId}`);
+            if (container) {
+                if (list.length > 0) {
+                    let html = `<div id="active-call-content-${roomId}" class="space-y-1.5 w-full">`;
+                    list.forEach(p => {
+                        html += `
+                            <div class="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors w-full">
+                                <span class="text-xl font-black text-rose-600 font-mono">T#${p.token}</span>
+                                <span class="text-xs font-bold text-slate-800 truncate max-w-[120px]">${p.name}</span>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div id="active-call-content-${roomId}" class="text-slate-300 text-sm font-semibold italic py-6">
+                            No active call
+                        </div>
+                    `;
+                }
+            }
+
+            // 2. Single view updater (if matching the currently assigned room)
+            const assignedId = localStorage.getItem('assigned_room_id');
+            if (assignedId == roomId) {
+                const singleContainer = document.getElementById('single-patients-container');
+                if (singleContainer) {
+                    if (list.length > 0) {
+                        let html = '';
+                        list.forEach(p => {
+                            let tokenTextClass = 'text-[9vw]';
+                            let cardClass = 'col-span-1';
+                            if (list.length === 1) {
+                                tokenTextClass = 'text-[12vw]';
+                                cardClass = 'col-span-full py-12';
+                            } else if (list.length === 2) {
+                                tokenTextClass = 'text-[10vw]';
+                            }
+                            
+                            html += `
+                                <div class="${cardClass} bg-slate-50/50 border border-slate-100 rounded-3xl p-8 flex flex-col justify-center items-center shadow-sm">
+                                    <div class="${tokenTextClass} font-black text-rose-600 tracking-tighter leading-none select-none font-mono">
+                                        T#${p.token}
+                                    </div>
+                                    <div class="text-3xl md:text-5xl font-extrabold text-slate-800 tracking-tight truncate w-full text-center mt-6">
+                                        ${p.name}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        singleContainer.innerHTML = html;
+
+                        // Adjust columns
+                        singleContainer.className = `w-full max-w-6xl px-8 grid gap-8 justify-center items-stretch grid-cols-1`;
+                        if (list.length === 2) {
+                            singleContainer.classList.add('md:grid-cols-2');
+                        } else if (list.length === 3) {
+                            singleContainer.classList.add('md:grid-cols-2', 'lg:grid-cols-3');
+                        }
+                    } else {
+                        singleContainer.innerHTML = `
+                            <div class="col-span-full bg-slate-50/50 border border-slate-100 rounded-3xl p-16 flex flex-col justify-center items-center shadow-sm w-full">
+                                <div class="text-6xl md:text-8xl font-black text-slate-300 tracking-tighter leading-none font-mono">
+                                    T#--
+                                </div>
+                                <div class="text-3xl md:text-4xl font-bold text-slate-400 mt-6">
+                                    Waiting...
+                                </div>
+                            </div>
+                        `;
+                        singleContainer.className = `w-full max-w-6xl px-8 grid grid-cols-1 gap-6 justify-center items-stretch`;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

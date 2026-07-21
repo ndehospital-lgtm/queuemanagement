@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Patient - ClearVision Queue{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-6">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Patient Intake</h1>
+            <p class="mt-2 text-sm text-slate-600">Register a new patient into the hospital queue system.</p>
+        </div>
+        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center shadow-sm min-w-[120px]">
+            <span class="block text-xs font-semibold text-indigo-500 uppercase tracking-wider">Next Token</span>
+            <span id="token-preview" class="text-3xl font-extrabold text-indigo-700">#—</span>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-50 overflow-hidden">
+        <div class="p-6 sm:p-8">
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- PID -->
+                    <div>
+                        <label for="pid" class="block text-sm font-semibold text-slate-700">Patient ID (PID) <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-id-card"></i>
+                            </div>
+                            <input type="text" name="pid" id="pid" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                                placeholder="e.g. PID-9842">
+                        </div>
+                    </div>
+
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-semibold text-slate-700">Full Name <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user-tag"></i>
+                            </div>
+                            <input type="text" name="name" id="name" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                                placeholder="e.g. John Doe">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Condition -->
+                    <div>
+                        <label for="condition" class="block text-sm font-semibold text-slate-700">Patient Condition <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                            <select name="condition" id="condition" required
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                                {% for cond in conditions %}
+                                    <option value="{{ cond.id }}" {% if cond.name == 'Normal' %}selected{% endif %}>
+                                        {{ cond.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Select State (Group) -->
+                    <div>
+                        <label for="state-select" class="block text-sm font-semibold text-slate-700">Select State <span class="text-rose-500">*</span></label>
+                        <div class="mt-2 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <select id="state-select"
+                                class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                                <option value="">— Select a department/state —</option>
+                                {% for grp in room_groups %}
+                                    <option value="{{ grp.id }}">{{ grp.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if not room_groups %}
+                        <p class="mt-1 text-xs text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>No groups configured yet. <a href="{% url 'settings' %}" class="underline font-medium">Add groups in Settings</a> or select a room directly below.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Room + smart badge -->
+                <div>
+                    <label for="room" class="block text-sm font-semibold text-slate-700">
+                        Assigned Clinic Room <span class="text-rose-500">*</span>
+                        <span id="auto-badge" class="hidden ml-2 text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-bolt mr-0.5"></i>Auto-selected (least busy)
+                        </span>
+                    </label>
+                    <div class="mt-2 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-door-open"></i>
+                        </div>
+                        <select name="room" id="room" required
+                            class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            {% if room_groups %}disabled{% endif %}>
+                            {% if room_groups %}
+                                <option value="">— Select a state first —</option>
+                            {% else %}
+                                {% for rm in rooms %}
+                                    <option value="{{ rm.id }}">{{ rm.name }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <p id="room-hint" class="mt-1 text-xs text-slate-500 hidden"></p>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label for="note" class="block text-sm font-semibold text-slate-700">Doctor Notes / Symptoms (Optional)</label>
+                    <div class="mt-2 relative rounded-md shadow-sm">
+                        <textarea name="note" id="note" rows="4"
+                            class="block w-full px-4 py-3 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                            placeholder="Add brief symptoms or specific requirements..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <a href="{% url 'dashboard' %}" 
+                        class="px-5 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 hover:shadow-lg transition-all duration-150">
+                        <i class="fa-solid fa-circle-plus mr-1.5"></i>Register Patient
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const stateSelect = document.getElementById('state-select');
+    const roomSelect  = document.getElementById('room');
+    const tokenPreview = document.getElementById('token-preview');
+    const autoBadge   = document.getElementById('auto-badge');
+    const roomHint    = document.getElementById('room-hint');
+
+    // Fallback token data for rooms (used when no groups configured)
+    const nextTokens = JSON.parse('{{ room_next_tokens_json|safe }}');
+
+    // Track whether auto-select was applied
+    let autoSelectedRoomId = null;
+
+    function updateTokenPreview() {
+        const rid = roomSelect.value;
+        if (!rid) { tokenPreview.textContent = '#—'; return; }
+        // Try live data first (populated after group select), else fallback
+        const opt = roomSelect.querySelector(`option[value="${rid}"]`);
+        const tk  = opt && opt.dataset.nextToken ? opt.dataset.nextToken : (nextTokens[rid] || 1);
+        tokenPreview.textContent = '#' + tk;
+    }
+
+    roomSelect.addEventListener('change', () => {
+        // If user manually changed away from auto-selected room, hide badge
+        if (roomSelect.value != autoSelectedRoomId) {
+            autoBadge.classList.add('hidden');
+        } else {
+            autoBadge.classList.remove('hidden');
+        }
+        updateTokenPreview();
+    });
+
+    if (stateSelect) {
+        stateSelect.addEventListener('change', async () => {
+            const groupId = stateSelect.value;
+
+            if (!groupId) {
+                // Reset room select
+                roomSelect.innerHTML = '<option value="">— Select a state first —</option>';
+                roomSelect.disabled = true;
+                autoBadge.classList.add('hidden');
+                roomHint.classList.add('hidden');
+                tokenPreview.textContent = '#—';
+                autoSelectedRoomId = null;
+                return;
+            }
+
+            // Show loading state
+            roomSelect.innerHTML = '<option value="">Loading rooms…</option>';
+            roomSelect.disabled  = true;
+            tokenPreview.textContent = '#—';
+
+            try {
+                const resp = await fetch(`/api/group-rooms/${groupId}/`);
+                const data = await resp.json();
+
+                roomSelect.innerHTML = '';
+
+                if (!data.rooms || data.rooms.length === 0) {
+                    roomSelect.innerHTML = '<option value="">No rooms in this group</option>';
+                    roomHint.textContent = 'This group has no rooms assigned. Edit in Settings.';
+                    roomHint.classList.remove('hidden');
+                    return;
+                }
+
+                data.rooms.forEach(room => {
+                    const opt = document.createElement('option');
+                    opt.value = room.id;
+                    opt.textContent = `${room.name}  (${room.waiting_count} waiting)`;
+                    opt.dataset.nextToken = room.next_token;
+                    roomSelect.appendChild(opt);
+                });
+
+                // Auto-select recommended (least busy) room
+                if (data.recommended_room_id) {
+                    roomSelect.value = data.recommended_room_id;
+                    autoSelectedRoomId = String(data.recommended_room_id);
+                    autoBadge.classList.remove('hidden');
+
+                    // Show hint
+                    const rec = data.rooms.find(r => r.id == data.recommended_room_id);
+                    if (rec) {
+                        roomHint.textContent = `Auto-selected ${rec.name} — fewest active patients (${rec.waiting_count}).`;
+                        roomHint.classList.remove('hidden');
+                    }
+                }
+
+                roomSelect.disabled = false;
+                updateTokenPreview();
+
+            } catch (err) {
+                roomSelect.innerHTML = '<option value="">Error loading rooms</option>';
+                roomHint.textContent = 'Could not load rooms. Please refresh.';
+                roomHint.classList.remove('hidden');
+                console.error(err);
+            }
+        });
+    }
+
+    // Init token preview if room already selected (no-group mode)
+    updateTokenPreview();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Login - ClearVision Queue{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="flex justify-center">
+            <div class="bg-indigo-600 text-white p-3 rounded-2xl shadow-xl shadow-indigo-100 ring-4 ring-indigo-50">
+                <i class="fa-solid fa-eye text-3xl"></i>
+            </div>
+        </div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+            Sign in to your account
+        </h2>
+        <p class="mt-2 text-center text-sm text-slate-600">
+            For hospital staff, doctors, and administrators
+        </p>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow-xl shadow-slate-100 border border-slate-100 rounded-2xl sm:px-10">
+            <form class="space-y-6" method="POST">
+                {% csrf_token %}
+                <div>
+                    <label for="username" class="block text-sm font-medium text-slate-700">
+                        Username
+                    </label>
+                    <div class="mt-1.5 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <input id="username" name="username" type="text" autocomplete="username" required 
+                            class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                            placeholder="username">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-slate-700">
+                        Password
+                    </label>
+                    <div class="mt-1.5 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required 
+                            class="pl-10 block w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                            placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember-me" name="remember-me" type="checkbox" 
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded-lg transition-all">
+                        <label for="remember-me" class="ml-2 block text-sm text-slate-700 select-none">
+                            Remember me
+                        </label>
+                    </div>
+                    <div class="text-sm">
+                        <a href="{% url 'track_patient' %}" class="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+                            Track a Patient instead
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-indigo-100 hover:shadow-lg transition-all duration-150">
+                        <i class="fa-solid fa-right-to-bracket mr-2 flex items-center"></i>Sign In
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-500 leading-normal">
+                    Initial setup? Ask your systems administrator to register your credentials. Default admin user can be created via command line.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
