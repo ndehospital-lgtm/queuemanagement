@@ -6,8 +6,9 @@ from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import User
 import json
-from .models import Speciality, UserProfile, PatientCondition, Room, Patient, RoomGroup
+from .models import Speciality, UserProfile, PatientCondition, Room, Patient, RoomGroup, RegisterIssue, Department
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 def check_and_seed_db():
     """Seeds the database with basic specialities, conditions, and rooms if they are empty."""
@@ -571,8 +572,159 @@ def get_group_rooms_view(request, group_id):
         'recommended_room_id': best_room_id,
     })
 
+@login_required
+def problem_view(request):
+    departments = Department.objects.all().order_by('name')
+    patients = Patient.objects.all().order_by('name')
+    rooms = Room.objects.all().order_by('name')
+    user = request.user
+
+    # Admin/Superuser can see all tickets; other staff members only see their own tickets.
+    if user.is_superuser:
+        issues_qs = RegisterIssue.objects.all()
+    else:
+        issues_qs = RegisterIssue.objects.filter(reported_by=user)
+
+    # 1. Status Filter
+    selected_status = request.GET.get('status', '').strip()
+    if selected_status:
+        issues_qs = issues_qs.filter(status=selected_status)
+
+    # 2. Date Filter
+    date_range = request.GET.get('date_range', '').strip()
+    start_date_str = request.GET.get('start_date', '').strip()
+    end_date_str = request.GET.get('end_date', '').strip()
+
+    today = timezone.localdate()
+
+    if date_range == 'today':
+        issues_qs = issues_qs.filter(created_at__date=today)
+    elif date_range == 'yesterday':
+        yesterday = today - timezone.timedelta(days=1)
+        issues_qs = issues_qs.filter(created_at__date=yesterday)
+    elif date_range == '7days':
+        seven_days_ago = today - timezone.timedelta(days=7)
+        issues_qs = issues_qs.filter(created_at__date__gte=seven_days_ago)
+    elif start_date_str or end_date_str:
+        from datetime import date as dt_date
+        if start_date_str:
+            try:
+                start_date = dt_date.fromisoformat(start_date_str)
+                issues_qs = issues_qs.filter(created_at__date__gte=start_date)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = dt_date.fromisoformat(end_date_str)
+                issues_qs = issues_qs.filter(created_at__date__lte=end_date)
+            except ValueError:
+                pass
+
+    issues = issues_qs.order_by('-created_at')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        department_id = request.POST.get('department')
+        room_id = request.POST.get('room')
+        description = request.POST.get('description', '').strip()
+        status = request.POST.get('status', 'OPEN')
+
+        if not title:
+            messages.error(request, "Issue title is required.")
+        else:
+            department = Department.objects.filter(id=department_id).first() if department_id else None
+            room = Room.objects.filter(id=room_id).first() if room_id else None
+
+            issue = RegisterIssue.objects.create(
+                title=title,
+                description=description or None,
+                status=status,
+                department=department,
+                room=room,
+                reported_by=request.user
+            )
+
+            if status in ['RESOLVED', 'CLOSED']:
+                issue.resolved_at = timezone.now()
+                issue.save(update_fields=['resolved_at'])
+
+            messages.success(request, "Issue submitted successfully.")
+            return redirect(request.path)
+
+    context = {
+        'departments': departments,
+        'patients': patients,
+        'rooms': rooms,
+        'user': user,
+        'issues': issues,
+        'selected_status': selected_status,
+        'date_range': date_range,
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+    }
+    return render(request, 'problems.html', context)
+
+
+@require_POST
+def delete_register_issue(request, pk):
+    # Restrict deletion permission to admins, or the person who reported it.
+    if request.user.is_superuser:
+        issue = get_object_or_404(RegisterIssue, pk=pk)
+    else:
+        issue = get_object_or_404(RegisterIssue, pk=pk, reported_by=request.user)
+
+    issue.delete()
+    messages.success(request, f"Ticket #TK-{pk} was successfully deleted.")
+    return redirect('problem')
 
 
 @login_required
-def problem_view(request):
-    return render(request, 'problems.html')
+def edit_register_issue(request, pk):
+    """
+    Handles editing/updating an existing RegisterIssue via the modal popup.
+    """
+    # Restrict editing permission to admins, or the person who reported it.
+    if request.user.is_superuser:
+        issue = get_object_or_404(RegisterIssue, pk=pk)
+    else:
+        issue = get_object_or_404(RegisterIssue, pk=pk, reported_by=request.user)
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        department_id = request.POST.get('department')
+        room_id = request.POST.get('room')
+        description = request.POST.get('description', '').strip()
+        status = request.POST.get('status')
+
+        if not title:
+            messages.error(request, "Issue title cannot be empty.")
+            return redirect(request.META.get('HTTP_REFERER', 'problem_view'))
+
+        # Fetch optional foreign keys
+        department = Department.objects.filter(id=department_id).first() if department_id else None
+        room = Room.objects.filter(id=room_id).first() if room_id else None
+
+        # Track status changes to manage `resolved_at` timestamp
+        old_status = issue.status
+
+        # Update model fields
+        issue.title = title
+        issue.department = department
+        issue.room = room
+        issue.description = description or None
+
+        if status:
+            issue.status = status
+
+            # Set or clear resolved_at based on the new status
+            if status in ['RESOLVED', 'CLOSED'] and old_status not in ['RESOLVED', 'CLOSED']:
+                issue.resolved_at = timezone.now()
+            elif status in ['OPEN', 'IN_PROGRESS']:
+                issue.resolved_at = None
+
+        issue.save()
+
+        messages.success(request, f"Ticket #TK-{issue.id} updated successfully.")
+        return redirect(request.META.get('HTTP_REFERER', 'problem_view'))
+
+    return redirect('problem_view')

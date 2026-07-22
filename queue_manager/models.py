@@ -124,6 +124,7 @@ def broadcast_patient_save(sender, instance, created, **kwargs):
                         'name': instance.name,
                         'token': instance.token,
                         'condition': instance.condition.name,
+                        'condition_id': instance.condition.id,
                         'condition_color': instance.condition.color_theme,
                         'room_id': instance.room.id,
                         'room_no': instance.room.name,
@@ -154,3 +155,63 @@ def broadcast_patient_delete(sender, instance, **kwargs):
             )
         except Exception as e:
             pass
+
+
+
+
+
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    rooms = models.ManyToManyField(Room, related_name='departments', blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+
+
+
+
+class RegisterIssue(models.Model):
+    STATUS_CHOICES = [
+        ('OPEN', 'Open'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved'),
+        ('CLOSED', 'Closed'),
+    ]
+
+
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='register_issues'
+    )
+    reported_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reported_register_issues'
+    )
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='register_issues'
+    )   
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.status})"

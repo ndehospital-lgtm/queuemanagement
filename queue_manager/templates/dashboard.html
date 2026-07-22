@@ -3,6 +3,9 @@
 {% block title %}Clinic Dashboard - ClearVision Queue{% endblock %}
 
 {% block content %}
+<!-- Global CSRF Token for JavaScript/WebSockets -->
+<div style="display: none;">{% csrf_token %}</div>
+
 <div class="py-6 space-y-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -437,7 +440,7 @@
                         <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
                         <input type="hidden" name="pid" value="${p.pid}">
                         <input type="hidden" name="name" value="${p.name}">
-                        <input type="hidden" name="condition" value="${p.condition}">
+                        <input type="hidden" name="condition" value="${p.condition_id}">
                         <input type="hidden" name="room" value="${p.room_id}">
                         <input type="hidden" name="note" value="${p.note}">
                         <input type="hidden" name="status" value="IN_PROGRESS">
@@ -452,7 +455,7 @@
                         <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
                         <input type="hidden" name="pid" value="${p.pid}">
                         <input type="hidden" name="name" value="${p.name}">
-                        <input type="hidden" name="condition" value="${p.condition}">
+                        <input type="hidden" name="condition" value="${p.condition_id}">
                         <input type="hidden" name="room" value="${p.room_id}">
                         <input type="hidden" name="note" value="${p.note}">
                         <input type="hidden" name="status" value="COMPLETED">
@@ -468,7 +471,7 @@
                     <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
                     <input type="hidden" name="pid" value="${p.pid}">
                     <input type="hidden" name="name" value="${p.name}">
-                    <input type="hidden" name="condition" value="${p.condition}">
+                    <input type="hidden" name="condition" value="${p.condition_id}">
                     <input type="hidden" name="room" value="${p.room_id}">
                     <input type="hidden" name="note" value="${p.note}">
                     <input type="hidden" name="status" value="CANCELLED">

@@ -14,4 +14,6 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),
     path('problem/', views.problem_view, name='problem'),
     path('api/group-rooms/<int:group_id>/', views.get_group_rooms_view, name='get_group_rooms'),
+    path('issues/<int:pk>/delete/', views.delete_register_issue, name='delete_register_issue'),
+    path('ticket/<int:pk>/edit/', views.edit_register_issue, name='edit_register_issue'),
 ]

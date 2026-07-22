@@ -36,46 +36,46 @@
                 {% csrf_token %}
                 
                 <div>
-                    <label for="from_department" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Your Sector / Department</label>
-                    <select id="from_department" name="from_department" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
-                        <option value="reception" selected>Reception / Front Desk</option>
-                        <option value="optometry">Optometry Department</option>
-                        <option value="opd">Outpatient Department (OPD)</option>
-                        <option value="ot">Operation Theater (OT)</option>
-                        <option value="pharmacy">Pharmacy</option>
-                        <option value="lab">Lab / Diagnostics</option>
+                    <label for="title" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Issue Title</label>
+                    <input type="text" id="title" name="title" maxlength="150" required placeholder="Brief title of the issue" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                </div>
+
+                <div>
+                    <label for="department" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Department</label>
+                    <select id="department" name="department" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                        <option value="">-- Select Department --</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label for="target_authority" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Assign To (Desire Authority)</label>
-                    <select id="target_authority" name="target_authority" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
-                        <option value="biomedical" selected>Biomedical Engineering (Eye Equipment/Devices)</option>
-                        <option value="it_support">IT Support / Helpdesk</option>
-                        <option value="maintenance">Maintenance / Facilities</option>
-                        <option value="hospital_admin">Hospital Administration</option>
+                    <label for="room" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Room (Optional)</label>
+                    <select id="room" name="room" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                        <option value="">-- Select Room --</option>
+                        {% for room in rooms %}
+                            <option value="{{ room.id }}">{{ room.name }}</option>
+                        {% endfor %}
                     </select>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label for="priority" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Priority Level</label>
-                        <select id="priority" name="priority" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="device_name" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Device/Software Name</label>
-                        <input type="text" id="device_name" name="device_name" placeholder="e.g., OCT Machine" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
-                    </div>
                 </div>
 
                 <div>
                     <label for="description" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Describe the Issue</label>
-                    <textarea id="description" name="description" rows="3" required placeholder="Provide details..." class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50"></textarea>
+                    <textarea id="description" name="description" rows="3" placeholder="Provide details..." class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50"></textarea>
                 </div>
+
+                {% if user.is_staff %}
+                <div>
+                    <label for="status" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Status</label>
+                    <select id="status" name="status" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                        <option value="OPEN" selected>Open</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="CLOSED">Closed</option>
+                    </select>
+                </div>
+                {% endif %}
 
                 <div class="flex items-center justify-end space-x-2 pt-2">
                     <button type="button" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition">Cancel</button>
@@ -87,29 +87,51 @@
         <!-- Right Side: Active Ticket List & Date Filters -->
         <div class="xl:col-span-2 space-y-4">
             
-            <!-- Date Filter Panel -->
+            <!-- Date & Status Filter Panel -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <form method="GET" action="" class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <!-- Quick Filters -->
+                <form method="GET" action="" class="flex flex-wrap items-center justify-between gap-4">
+                    <!-- Maintain date_range parameter if present, unless overridden by custom picker -->
+                    {% if date_range %}
+                        <input type="hidden" name="date_range" value="{{ date_range }}">
+                    {% endif %}
+
+                    <!-- Left Aligned: Filter Label & Buttons -->
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-2">Filter By:</span>
-                        <a href="?date_range=today" class="px-3 py-1.5 text-xs font-medium rounded-lg border bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 transition">Today</a>
-                        <a href="?date_range=yesterday" class="px-3 py-1.5 text-xs font-medium rounded-lg border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition">Yesterday</a>
-                        <a href="?date_range=7days" class="px-3 py-1.5 text-xs font-medium rounded-lg border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition">Last 7 Days</a>
+                        <a href="?date_range=today{% if selected_status %}&status={{ selected_status }}{% endif %}" class="px-3 py-1.5 text-xs font-medium rounded-lg border {% if date_range == 'today' %}bg-blue-50 text-blue-600 border-blue-200{% else %}bg-white text-slate-600 border-slate-200 hover:bg-slate-50{% endif %} transition">Today</a>
+                        <a href="?date_range=yesterday{% if selected_status %}&status={{ selected_status }}{% endif %}" class="px-3 py-1.5 text-xs font-medium rounded-lg border {% if date_range == 'yesterday' %}bg-blue-50 text-blue-600 border-blue-200{% else %}bg-white text-slate-600 border-slate-200 hover:bg-slate-50{% endif %} transition">Yesterday</a>
+                        <a href="?date_range=7days{% if selected_status %}&status={{ selected_status }}{% endif %}" class="px-3 py-1.5 text-xs font-medium rounded-lg border {% if date_range == '7days' %}bg-blue-50 text-blue-600 border-blue-200{% else %}bg-white text-slate-600 border-slate-200 hover:bg-slate-50{% endif %} transition">Last 7 Days</a>
+                        {% if date_range or start_date or end_date or selected_status %}
+                            <a href="?" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition">Clear All</a>
+                        {% endif %}
                     </div>
                     
-                    <!-- Custom Range Inputs -->
-                    <div class="flex items-center gap-2 self-start md:self-auto">
-                        <div class="relative">
-                            <input type="date" name="start_date" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" title="Start Date">
+                    <!-- Right Aligned: Status & Custom Date Pickers -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Status Dropdown Filter -->
+                        <div>
+                            <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                                <option value="">-- All Statuses --</option>
+                                <option value="OPEN" {% if selected_status == "OPEN" %}selected{% endif %}>Open</option>
+                                <option value="IN_PROGRESS" {% if selected_status == "IN_PROGRESS" %}selected{% endif %}>In Progress</option>
+                                <option value="RESOLVED" {% if selected_status == "RESOLVED" %}selected{% endif %}>Resolved</option>
+                                <option value="CLOSED" {% if selected_status == "CLOSED" %}selected{% endif %}>Closed</option>
+                            </select>
                         </div>
-                        <span class="text-xs font-semibold text-slate-400">to</span>
-                        <div class="relative">
-                            <input type="date" name="end_date" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" title="End Date">
+
+                        <!-- Date inputs -->
+                        <div class="flex items-center gap-2">
+                            <div class="relative">
+                                <input type="date" name="start_date" value="{{ start_date }}" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" title="Start Date">
+                            </div>
+                            <span class="text-xs font-semibold text-slate-400">to</span>
+                            <div class="relative">
+                                <input type="date" name="end_date" value="{{ end_date }}" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" title="End Date">
+                            </div>
+                            <button type="submit" class="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition" title="Apply Filter">
+                                <i class="fa-solid fa-filter text-xs px-0.5"></i>
+                            </button>
                         </div>
-                        <button type="submit" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition" title="Apply Filter">
-                            <i class="fa-solid fa-filter text-xs px-1"></i>
-                        </button>
                     </div>
                 </form>
             </div>
@@ -121,54 +143,74 @@
                     <span class="text-xs text-slate-500 font-medium">Showing filtered logs</span>
                 </div>
 
-                <!-- Responsive Table Wrapper -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                 <th class="p-3">Ticket / Sector</th>
-                                <th class="p-3">Assigned To</th>
-                                <th class="p-3">Equipment</th>
-                                <th class="p-3 text-center">Priority</th>
+                                <th class="p-3">Reported By</th>
+                                <th class="p-3">Issue</th>
+                                <th class="p-3 text-center">Status</th>
                                 <th class="p-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="text-sm divide-y divide-slate-100">
-                            <!-- Example Ticket 1 -->
-                            <tr class="hover:bg-slate-50/80 transition-colors">
-                                <td class="p-3">
-                                    <div class="font-medium text-slate-800">#TK-402</div>
-                                    <div class="text-xs text-slate-400">Reception • 2026-07-20</div>
-                                </td>
-                                <td class="p-3 text-slate-600 font-medium text-xs">Biomedical Eng.</td>
-                                <td class="p-3 text-slate-500 text-xs">OCT Scanner Screen down</td>
-                                <td class="p-3 text-center">
-                                    <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-red-50 text-red-700 border border-red-100">High</span>
-                                </td>
-                                <td class="p-3 text-right space-x-1 whitespace-nowrap">
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="View"><i class="fa-solid fa-eye text-xs"></i></a>
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded transition" title="Edit"><i class="fa-solid fa-pen text-xs"></i></a>
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete"><i class="fa-solid fa-trash text-xs"></i></a>
-                                </td>
-                            </tr>
+                            {% if issues %}
+                                {% for issue in issues %}
+                                    <tr class="hover:bg-slate-50/80 transition-colors">
+                                        <td class="p-3">
+                                            <div class="font-medium text-slate-800">#TK-{{ issue.id }}</div>
+                                            <div class="text-xs text-slate-400">{{ issue.department.name }} • {{ issue.created_at|date:"Y-m-d" }}</div>
+                                        </td>
+                                        <td class="p-3 text-slate-600 font-medium text-xs">{{ issue.reported_by.username }}</td>
+                                        <td class="p-3 text-slate-500 text-xs">{{ issue.title }}</td>
+                                        <td class="p-3 text-center">
+                                            {% if issue.status == "OPEN" %}
+                                                <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">Open</span>
+                                            {% elif issue.status == "IN_PROGRESS" %}
+                                                <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">In Progress</span>
+                                            {% elif issue.status == "RESOLVED" %}
+                                                <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">Resolved</span>
+                                            {% elif issue.status == "CLOSED" %}
+                                                <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-100">Closed</span>
+                                            {% else %}
+                                                <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-100">{{ issue.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                                            <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="View"><i class="fa-solid fa-eye text-xs"></i></a>
+                                            
+                                            <!-- Edit Button with dynamic data passing -->
+                                            <button type="button" 
+                                                    onclick="openEditModal(
+                                                        '{{ issue.id }}', 
+                                                        '{{ issue.title|escapejs }}', 
+                                                        '{{ issue.department.id|default_if_none:"" }}', 
+                                                        '{{ issue.room.id|default_if_none:"" }}', 
+                                                        '{{ issue.description|escapejs }}', 
+                                                        '{{ issue.status }}', 
+                                                        '{% url "edit_register_issue" issue.id %}'
+                                                    )" 
+                                                    class="inline-flex p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded transition" 
+                                                    title="Edit">
+                                                <i class="fa-solid fa-pen text-xs"></i>
+                                            </button>
 
-                            <!-- Example Ticket 2 -->
-                            <tr class="hover:bg-slate-50/80 transition-colors">
-                                <td class="p-3">
-                                    <div class="font-medium text-slate-800">#TK-401</div>
-                                    <div class="text-xs text-slate-400">Optometry • 2026-07-19</div>
-                                </td>
-                                <td class="p-3 text-slate-600 font-medium text-xs">IT Support</td>
-                                <td class="p-3 text-slate-500 text-xs">Queue printer out of paper</td>
-                                <td class="p-3 text-center">
-                                    <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">Medium</span>
-                                </td>
-                                <td class="p-3 text-right space-x-1 whitespace-nowrap">
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition"><i class="fa-solid fa-eye text-xs"></i></a>
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded transition"><i class="fa-solid fa-pen text-xs"></i></a>
-                                    <a href="#" class="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition"><i class="fa-solid fa-trash text-xs"></i></a>
-                                </td>
-                            </tr>
+                                            <!-- Delete Button -->
+                                            <button type="button"
+                                                    onclick="openDeleteModal('{{ issue.id }}', '{% url "delete_register_issue" issue.id %}')"
+                                                    class="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                                    title="Delete">
+                                                <i class="fa-solid fa-trash text-xs"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="p-4 text-sm text-slate-500 text-center">No tickets found.</td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -177,4 +219,147 @@
         </div>
     </div>
 </div>
+
+<!-- ================= EDIT TICKET MODAL ================= -->
+<div id="editModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-100 max-w-lg w-full overflow-hidden transform transition-all">
+        <!-- Modal Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center space-x-2">
+                <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">Edit Ticket <span id="editModalTicketHeader" class="text-blue-600"></span></h3>
+            </div>
+            <button type="button" onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body / Form -->
+        <form id="editForm" method="POST" action="" class="p-5 space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="edit_title" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Issue Title</label>
+                <input type="text" id="edit_title" name="title" maxlength="150" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="edit_department" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Department</label>
+                    <select id="edit_department" name="department" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                        <option value="">-- Select Department --</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="edit_room" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Room</label>
+                    <select id="edit_room" name="room" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                        <option value="">-- Select Room --</option>
+                        {% for room in rooms %}
+                            <option value="{{ room.id }}">{{ room.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label for="edit_description" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Describe the Issue</label>
+                <textarea id="edit_description" name="description" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50"></textarea>
+            </div>
+            
+            <div>
+                <label for="edit_status" class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Status</label>
+                <select id="edit_status" name="status" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50">
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                </select>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition shadow-sm shadow-blue-100">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ================= DELETE TICKET MODAL ================= -->
+<div id="deleteModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-100 max-w-sm w-full overflow-hidden transform transition-all">
+        <div class="p-5 text-center">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+            </div>
+            
+            <h3 class="text-base font-semibold text-slate-800 mb-1">Delete Ticket?</h3>
+            <p class="text-xs text-slate-500 mb-4">
+                Are you sure you want to delete ticket <span id="modalTicketId" class="font-semibold text-slate-700"></span>? This action cannot be undone.
+            </p>
+
+            <form id="deleteForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="flex space-x-2">
+                    <button type="button" onclick="closeDeleteModal()" class="w-1/2 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="w-1/2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition shadow-sm shadow-red-100">
+                        Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript Modal Handler -->
+<script>
+    // --- EDIT MODAL FUNCTIONS ---
+    function openEditModal(issueId, title, departmentId, roomId, description, status, editUrl) {
+        // Set dynamic header text and form target URL
+        document.getElementById('editModalTicketHeader').textContent = '#TK-' + issueId;
+        document.getElementById('editForm').action = editUrl;
+
+        // Populate fields with current ticket data
+        document.getElementById('edit_title').value = title || '';
+        document.getElementById('edit_department').value = departmentId || '';
+        document.getElementById('edit_room').value = roomId || '';
+        document.getElementById('edit_description').value = description || '';
+        document.getElementById('edit_status').value = status || 'OPEN';
+
+        // Display modal
+        document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+    }
+
+    // --- DELETE MODAL FUNCTIONS ---
+    function openDeleteModal(issueId, deleteUrl) {
+        document.getElementById('modalTicketId').textContent = '#TK-' + issueId;
+        document.getElementById('deleteForm').action = deleteUrl;
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    // --- CLOSE ON OUTSIDE CLICK ---
+    window.addEventListener('click', function(event) {
+        const editModal = document.getElementById('editModal');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (event.target === editModal) closeEditModal();
+        if (event.target === deleteModal) closeDeleteModal();
+    });
+</script>
 {% endblock %}
